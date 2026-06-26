@@ -4,8 +4,7 @@ An AI customer-support chatbot for a specialty pet store that answers **strictly
 
 `n8n` · `Qdrant` · `OpenAI` · `Telegram` · `Docker`
 
-<!-- Replace the path below with your architecture/overview image, e.g. docs/overview.png -->
-![Architecture overview](docs/overview.png)
+![Overview](riverbend_overview.png)
 
 ---
 
@@ -13,7 +12,7 @@ An AI customer-support chatbot for a specialty pet store that answers **strictly
 
 A specialty pet store gets the same questions over and over — opening hours, shipping and return policies, prices, and detailed care for dozens of species. Answering them ties up staff time, and a generic chatbot would confidently invent wrong care advice (a real risk when the answer affects a live animal).
 
-This assistant solves that: it answers **only** from the store's official knowledge base, 24/7, and honestly says "I don't have that" when a question falls outside its data.
+This assistant answers **only** from the store's official knowledge base, 24/7, and honestly says "I don't have that" when a question falls outside its data.
 
 ---
 
@@ -32,16 +31,21 @@ This assistant solves that: it answers **only** from the store's official knowle
 
 The system is two n8n workflows around a single Qdrant collection.
 
-<!-- You can reuse the same diagram here, or a cropped version -->
-![Architecture](docs/architecture.png)
-
-**Phase 1 — Ingestion (run once).** The knowledge base (a ~13,400-word Markdown document) is read from disk, split into chunks, embedded, and stored as vectors in Qdrant.
+**Phase 1 — Ingestion (run once).** A ~13,400-word Markdown knowledge base is read from disk, split into chunks, embedded, and stored as vectors in Qdrant.
 
 `Knowledge Base (.md)` → `Read File` → `Recursive Text Splitter (1000 / 200)` → `OpenAI Embeddings` → `Qdrant (insert)`
 
 **Phase 2 — Chat (every message).** A Telegram message triggers an AI Agent. The agent embeds the question, runs a semantic search against Qdrant, grounds the LLM on the retrieved chunks, and replies — keeping conversation context in memory.
 
 `Telegram Trigger` → `AI Agent` (LLM + Memory + Qdrant retriever) → `Telegram Send`
+
+The actual n8n chat workflow:
+
+![n8n workflow](sc%20n8n.png)
+
+The knowledge base indexed in Qdrant — 117 vectors in the `riverbend` collection:
+
+![Qdrant collection](sc%20qdrant.png)
 
 ---
 
@@ -77,7 +81,7 @@ This is where most of the real work happened.
 
 - **Chunking strategy.** Recursive character splitting at **1000 chars / 200 overlap** — large enough to keep a care-sheet section coherent, with overlap so a fact split across a boundary isn't lost.
 - **Grounding.** The system prompt and the retriever tool description both force the agent to answer only from retrieved documents and never to claim something is "from our notes" unless it actually appears in the results.
-- **Fighting near-miss hallucinations.** The hardest problem: when asked about a species *not* in the knowledge base (e.g. a chameleon), semantic search still returns the nearest real chunks (gecko / lizard care sheets), and the model would generalize them onto the wrong species. I constrained this by giving the agent an explicit allow-list of covered species and a deterministic refusal for anything outside it.
+- **Fighting near-miss hallucinations.** The hardest problem: when asked about a species *not* in the knowledge base (e.g. a chameleon), semantic search still returns the nearest real chunks (gecko / lizard care sheets), and the model would generalize them onto the wrong species. I constrained this with an explicit allow-list of covered species and a deterministic refusal for anything outside it.
 - **Conversation memory.** A session-scoped memory keyed on the Telegram chat ID, so follow-up questions ("what do they eat?") resolve correctly per user.
 - **Local dev workflow.** Qdrant in Docker; Cloudflare Tunnel to expose the local n8n webhook to Telegram (the tunnel URL rotates each session, so the workflow is re-published per run).
 
@@ -95,21 +99,17 @@ The species allow-list is a pragmatic guardrail, not a hard wall — it relies o
 
 ## Demo
 
-<!-- Embed your demo video (YouTube/Loom link) or a GIF here -->
-[▶ Watch the demo](DEMO_LINK_HERE)
-
-<!-- Add 2-3 conversation screenshots: a grounded answer + the honest refusal -->
-| Grounded answer | Honest refusal |
-|---|---|
-| ![Answer](docs/answer.png) | ![Refusal](docs/refusal.png) |
+▶ **[Watch the demo](https://github.com/ihor-automation/riverbend-rag-assistant/blob/main/raw%20bot%20.mp4)** — grounded answers on store hours, species care, compatibility, and policies, plus a health question handled safely and an honest refusal when a question falls outside the knowledge base.
 
 ---
 
 ## Repository contents
 
-- `workflows/` — exported n8n workflows (ingestion + chat)
-- `knowledge-base/riverbend_knowledge_base.md` — the source knowledge base
-- `docs/` — architecture diagram, screenshots, demo media
+- `RAG – Telegram.json` — the n8n chat workflow (agent + retriever + memory)
+- `riverbend_overview.png` — system overview
+- `sc n8n.png` — the n8n workflow canvas
+- `sc qdrant.png` — the Qdrant collection (117 vectors)
+- `raw bot .mp4` — demo video
 
 ---
 
