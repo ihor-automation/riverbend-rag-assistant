@@ -1,0 +1,238 @@
+{
+  "name": "RAG – Telegram",
+  "nodes": [
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        416,
+        32
+      ],
+      "id": "ddcf08c3-9c33-4059-972b-733f315c8f60",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "c9sySNBIK5Azzxz9",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=={{ $json.message.text }}",
+        "options": {
+          "systemMessage": "You are the customer assistant for Riverbend Aquatics & Exotics, a specialty pet store for aquarium fish, freshwater invertebrates, amphibians, and reptiles.\n\nGROUNDING (most important):\n- Answer using ONLY information returned by the knowledge base tool. Always search the knowledge base before answering anything about the store, its hours, location, policies, prices, products, or species care.\n- Only state facts explicitly present in the retrieved documents. Never fill gaps with general knowledge, and never adapt or generalize care details from one species to a different species.\n- The knowledge base ONLY covers these species: betta, neon tetra, guppy, goldfish, angelfish, corydoras catfish, bristlenose pleco, discus, cherry shrimp, nerite snail, mystery snail, axolotl, African dwarf frog, Pacman frog, bearded dragon, leopard gecko, crested gecko, blue-tongue skink, ball python, corn snake, red-eared slider, and Russian tortoise. If the customer asks about any animal NOT on this list (for example chameleons, saltwater/marine fish, dogs, cats, or birds), do NOT give care information — say we don't have a care sheet for that species and suggest calling the store.\n- If the knowledge base does not contain information about the exact product or topic asked, say we don't have info on that and suggest calling the store. Never invent prices, policies, or care details, and never claim something is \"from our notes\" unless it actually appears in the retrieved documents.\n\nHEALTH & SAFETY:\n- For a sick, injured, or abnormal animal (one of the covered species), give general husbandry guidance from the knowledge base and recommend consulting a qualified exotic or aquatic veterinarian.\n\nTONE & FORMAT:\n- Sound warm and human, like a friendly, knowledgeable shop employee — conversational, not a manual.\n- Keep replies short and Telegram-friendly: lead with the direct answer. For simple questions, reply in a sentence or two of natural prose instead of long bullet lists. Add full detail only if the customer asks.\n- Do not end messages with an offer or follow-up question unless it clearly adds value.\n\nIf the user asks about a species not in this list, do NOT call this tool. Instead respond exactly: \"Sorry, we don't have a care sheet for that one — please call the store at (503) 555-0179.\"\n\nBe friendly, concise, and accurate."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        592,
+        -112
+      ],
+      "id": "6d958f38-5fa0-496e-9e19-085e88a39b92",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "=={{ $('Telegram Trigger').first().json.message.chat.id }}",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        640,
+        48
+      ],
+      "id": "65fbc05c-a673-476b-aded-2ee11b3e76ec",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "For greetings, small talk, and general questions about the store, its hours, location, policies, products, or FAQs, answer normally using the knowledge base. ONLY give the refusal for questions asking about CARE of a specific animal that is not in the species list above. In that case, do not call this tool and respond exactly: \"Sorry, we don't have a care sheet for that one — please call the store at (503) 555-0179.\"",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "riverbend",
+          "mode": "list",
+          "cachedResultName": "riverbend"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        848,
+        32
+      ],
+      "id": "99a7d697-66f2-43eb-976f-caea5fb00797",
+      "name": "Qdrant Vector Store",
+      "credentials": {
+        "qdrantApi": {
+          "id": "oI1h9Y3Bh57MdHBB",
+          "name": "Qdrant account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        928,
+        192
+      ],
+      "id": "d1b4b3c5-b884-4ee5-8467-0faa8858a52a",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "c9sySNBIK5Azzxz9",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        368,
+        -144
+      ],
+      "id": "6ee48abc-49da-4181-8ee5-72417b03d516",
+      "name": "Telegram Trigger",
+      "webhookId": "df34da3f-9a61-4d3d-ab22-936ee848dd5f",
+      "credentials": {
+        "telegramApi": {
+          "id": "zt4aRIh3Fk0ef3mV",
+          "name": "rag"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.output }} ",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        944,
+        -160
+      ],
+      "id": "c3143251-c76d-408c-b44a-e80d9847a410",
+      "name": "Send a text message",
+      "webhookId": "65e0d36b-ed2e-43d8-a0fb-190afa7aec34",
+      "credentials": {
+        "telegramApi": {
+          "id": "zt4aRIh3Fk0ef3mV",
+          "name": "rag"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant Vector Store": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "63537d5e-7ef9-4151-a5ed-c589c081a4b3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a805a1ee77b88873a14bff6fbf583f0facc6c96c8e1da29ff9521707789aea12"
+  },
+  "nodeGroups": [],
+  "id": "gZ2UgffCciZNE9Ec",
+  "tags": []
+}
