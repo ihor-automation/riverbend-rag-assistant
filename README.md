@@ -99,6 +99,11 @@ The species allow-list is a pragmatic guardrail, not a hard wall — it relies o
 
 ## Demo
 
+
+
+https://github.com/user-attachments/assets/74603447-5981-48b5-aeca-ab2785bdcfa9
+
+
 ▶ **[Watch the demo](https://github.com/ihor-automation/riverbend-rag-assistant/blob/main/raw%20bot%20.mp4)** — grounded answers on store hours, species care, compatibility, and policies, plus a health question handled safely and an honest refusal when a question falls outside the knowledge base.
 
 ---
